@@ -1,4 +1,0 @@
-[project]
-name = "pyrule"
-version = "0.2.0"
-description = "Uma biblioteca Python para regras"

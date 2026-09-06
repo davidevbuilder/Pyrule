@@ -1,87 +1,146 @@
 """
-PYRULE 0.2.0
+PYRULE 0.3.0 - RULE FUNCTIONS
 
-Rule Functions:
-PyRule allows you to create rules for function parameters
-and automatically check those rules before executing a function.
+Tools for creating and applying rules to function parameters.
 
-Creating rules for a function:
-* function_rules = RuleFunction(parameter=rule)
+This module allows PyRule to validate function parameters before
+the function is executed. Rules can be associated with specific
+parameters using ``RuleFunction`` and applied to functions through
+the ``ruledfunction`` decorator.
 
-Example:
-* age_rule = RuleFunction(age="<18")
-
-Using a rule function:
-* @ruledfunction(rule)
+A rule function can define conditions for one or more parameters.
 
 Example:
-* @ruledfunction(RuleFunction(age="<18"))
-  def hello(age):
-      print(f"Hello! You are {age} years old.")
 
-When the function is called, PyRule checks the parameters
-against the defined rules before executing the function.
+    function_rules = RuleFunction(
+        age="<18"
+    )
+
+The rules can then be applied to a function:
+
+    @ruledfunction(function_rules)
+    def hello(age):
+        print(f"Hello! You are {age} years old.")
+
+When the function is called, its arguments are checked against
+the defined rules before the original function is executed.
 
 Example:
-* hello(15)
-  -> The rule is satisfied, so the function executes.
 
-* hello(20)
-  -> The rule is not satisfied, so the function does not execute.
+    hello(15)
+    # The rule is satisfied and the function executes.
 
-Rule Functions are useful for validating function parameters
-and avoiding repetitive conditions inside your functions.
+    hello(20)
+    # RuleNotSatisfiedError is raised.
 
-The main idea is to make parameter validation simpler,
-more readable, and easier to maintain.
+If a parameter required by a rule is not provided,
+``ParameterNotProvidedError`` is raised.
+
+Rule Functions are useful for keeping parameter validation
+separate from the function's main logic and reducing repetitive
+conditional checks.
+
+The main goal of this module is to make function parameter
+validation simpler, more readable, and easier to maintain.
 """
 
+
 import inspect
+
+from functools import wraps
+
 from .rules import Rule
+
 from .rules_exeptions import (
     RuleNotSatisfiedError,
     ParameterNotProvidedError
 )
-from functools import wraps
+
+from .rule_comparations import (
+    GreaterThan,
+    SmallerThan,
+    In
+)
 
 
 class RuleFunction(Rule):
     """
-    A class for a rule that can only be used with functions; it groups multiple parameter checks into a single rule.
+    Represents a collection of rules intended for function parameters.
+
+    ``RuleFunction`` extends ``Rule`` and allows multiple parameters
+    to have their own validation rules.
+
     Args:
-        **rules: a set of rules passed to the main rule; these only apply to parameter validation.
+        **rules:
+            Named rules where each key represents a function parameter
+            and each value represents the rule that must be satisfied.
+
     Example:
-        rule = RuleFunction(
-            age='<18'
-        )
+        >>> rule = RuleFunction(
+        ...     age="<18",
+        ...     name="Davi"
+        ... )
     """
+
     def __init__(self, **rules):
         super().__init__(**rules)
 
+
 def ruledfunction(rule):
     """
-    Decorator that checks whether the function received parameters that meet the rule.
+    Decorator that validates function parameters before execution.
+
+    The decorator receives a ``RuleFunction`` containing the rules
+    that should be applied to the decorated function.
+
     Args:
-        rule: Rule to be analyzed.
+        rule:
+            A ``RuleFunction`` containing the parameter rules.
+
     Returns:
-        Function: The decorated function with rule validation.
+        function:
+            A decorated function that validates its parameters
+            before executing the original function.
+
+    Raises:
+        ParameterNotProvidedError:
+            If a parameter required by the rule was not provided.
+
+        RuleNotSatisfiedError:
+            If a provided parameter does not satisfy its rule.
+
+    Example:
+        >>> rule = RuleFunction(age="<18")
+        >>>
+        >>> @ruledfunction(rule)
+        ... def hello(age):
+        ...     print(f"Hello! You are {age} years old.")
+        >>>
+        >>> hello(15)
+        Hello! You are 15 years old.
+
+        Calling the function with an invalid value:
+
+        >>> hello(20)
+        Traceback (most recent call last):
+            ...
+        RuleNotSatisfiedError: The rule for "age" was not satisfied.
     """
+
     def wrapper(func):
         parameters = inspect.signature(func).parameters
-        print(parameters)
 
         @wraps(func)
-        def execute(*args, **kwargs): #pega os args e kwrags
-            print(args)
-            values = dict(zip(parameters, args)) #associa o valor com o nome do parametro
-            print(values)
-            values.update(kwargs) #adiciona os kwrags que não são tuplas, não precisa de dict nem zip
-            print(values)
+        def execute(*args, **kwargs):
+            values = dict(zip(parameters, args))
+            values.update(kwargs)
 
-            for name, rule_value in rule.rules.items(): #name=key rule_value = valueb {key; value} or {name: rule_value}
+            for name, rule_value in rule.rules.items():
 
                 if name not in values:
-                    raise ParameterNotProvidedError(f'\033[91mThe parameter "{name}" was not provided.\033[0m')
+                    raise ParameterNotProvidedError(
+                        f'\033[91mThe parameter "{name}" was not provided.\033[0m'
+                    )
 
                 value = values[name]
 
@@ -89,17 +148,23 @@ def ruledfunction(rule):
                     limit = int(rule_value[1:])
 
                     if not value < limit:
-                        raise RuleNotSatisfiedError(f'\033[91mThe rule for "{name}" was not satisfied.\033[0m')
+                        raise RuleNotSatisfiedError(
+                            f'\033[91mThe rule for "{name}" was not satisfied.\033[0m'
+                        )
 
                 elif isinstance(rule_value, str) and rule_value.startswith(">"):
                     limit = int(rule_value[1:])
 
                     if not value > limit:
-                        raise RuleNotSatisfiedError(f'\033[91mThe rule for "{name}" was not satisfied.\033[0m')
+                        raise RuleNotSatisfiedError(
+                            f'\033[91mThe rule for "{name}" was not satisfied.\033[0m'
+                        )
 
                 else:
-                    if value != rule_value: #argument value != rule_value
-                        raise RuleNotSatisfiedError(f'\033[91mThe rule for "{name}" was not satisfied.\033[0m')
+                    if value != rule_value:
+                        raise RuleNotSatisfiedError(
+                            f'\033[91mThe rule for "{name}" was not satisfied.\033[0m'
+                        )
 
             return func(*args, **kwargs)
 

@@ -1,50 +1,94 @@
 """
-PYRULE 0.2.0
+PyRule 0.3.0
 
-A Python library made to make conditions and rule-based checks in your code easier.
-PyRule allows you to create rules and check whether values follow those rules.
+A Python library designed to make conditions and rule-based validation
+simpler, cleaner, and easier to understand.
 
-Creating a rule:
-* variable = Rule(key=value)
+PyRule allows you to create reusable rules and validate values against
+different conditions, such as comparisons, types, collections, strings,
+and logical rules.
 
-Example:
-* name_rule = Rule(name="Davi")
+Basic example:
 
-Checking if an item follows a rule:
-* if RuleValue(var).check_rule(variable_of_rule.rules[key]):
+    rule = Rule(name="Davi")
 
-Example:
-* if RuleValue("Davi").check_rule(name_rule.rules["name"]):
-  print("The value follows the rule!")
+You can access the rules stored in a Rule object through the ``rules``
+attribute:
 
-Rules can be used to organize conditions and make your code easier
-to read, maintain, and understand.
-The main idea of PyRule is to make repetitive conditions simpler
-and provide an easy way to create and check rules.
+    rule.rules["name"]
+
+Values can then be checked against a rule using RuleValue:
+
+    if RuleValue("Davi").check_rule(rule.rules["name"]):
+        print("The value follows the rule!")
+
+PyRule also provides several built-in rules, including:
+
+    - GreaterThan
+    - SmallerThan
+    - GreaterThanOrEqual
+    - SmallerThanOrEqual
+    - Equals
+    - NotEquals
+    - In
+    - Is
+    - IsNot
+    - StartsWith
+    - EndsWith
+    - Contains
+    - Length
+    - And
+    - Or
+
+Rules can be combined to create more expressive validations while
+keeping the conditions in your code organized and readable.
+
+The main goal of PyRule is to reduce repetitive conditional checks
+and provide a simple and reusable way to define and validate rules.
 """
 
 from .rules_exeptions import (
     ValueIsNotInRule
 )
 
+from .rule_comparations import (
+    GreaterThan,
+    SmallerThan,
+    In,
+    RULE_COMPARATIONS_LIST
+)
+
+from .rule_utils import inspect_value
+
+from .rule_types import (
+    RULE_TYPES_LIST
+)
+
 import inspect
+
 
 class Rule:
     """
-    Class for a simple rule; place multiple checks within a single rule.
+    Represents a collection of rules associated with named values.
+
+    A Rule can contain multiple named conditions that can later be
+    accessed through the ``rules`` attribute.
+
     Args:
-        **rules: set of rules that will be passed to the main rule.
+        **rules: Named rules to be stored.
+
     Example:
-        rule = Rule(
-            age=18
-        )
+        >>> rule = Rule(age=18)
+        >>> rule.rules["age"]
+        18
     """
+
     def __init__(self, **rules):
         self.rules = rules
 
     def __str__(self):
-        for k, v in self.rules.items():
-            return(f'{k}: {v}')
+        for key, value in self.rules.items():
+            return f'{key}: {value}'
 
     def add_value(self, **value):
         return self.rules.update(value)
@@ -52,24 +96,37 @@ class Rule:
 
 class RuleValue:
     """
-    Converts a value into a rule item that can be analyzed.
+    Represents a value that can be checked against a PyRule rule.
+
     Args:
-        value: Amount to be converted.
-    Exemple:
-        RuleValue('Davi')
+        value: The value to be validated.
+
+    Example:
+        >>> value = RuleValue("Davi")
+        >>> value.check_rule("Davi")
+        True
     """
+
     def __init__(self, value):
         self.value = value
 
     def check_rule(self, rule_item):
         """
-        Checks whether the item follows the created rule.
+        Checks whether the stored value satisfies the given rule.
+
         Args:
-            rule_item (Dict Elementy): Element of the main rule to be analyzed.
+            rule_item: A rule or rule collection to be evaluated.
+
         Returns:
-            True, False or Raise
-        Exemple:
-            if pyrule.RuleValue(name).check_rule(nome.rules['name']):
+            bool: ``True`` when the value satisfies the rule.
+
+        Raises:
+            ValueIsNotInRule: If the value does not satisfy the rule.
+
+        Example:
+            >>> rule = RuleValue("Davi")
+            >>> rule.check_rule("Davi")
+            True
         """
 
         if self.value == rule_item:
@@ -78,9 +135,15 @@ class RuleValue:
         if isinstance(rule_item, In) and self.value in rule_item.structure:
             return True
 
-        else:
-            raise ValueIsNotInRule('\033[91mThe value does not comply with the rule.')
+        for i in range(0, len(rule_item)):
+            print(rule_item[i])
+            if rule_item[i].__class__ == RULE_COMPARATIONS_LIST[11] or RULE_COMPARATIONS_LIST[12]:
+                return inspect_value(rule_item, self.value)
 
-class In:
-    def __init__(self, structure):
-        self.structure = structure
+        if rule_item.__class__ in RULE_COMPARATIONS_LIST + RULE_TYPES_LIST:
+            return inspect_value(rule_item, self.value)
+
+        else:
+            raise ValueIsNotInRule(
+                '\033[91mThe value does not comply with the rule.'
+            )
