@@ -11,7 +11,7 @@ The main goal of PyRule is to make repetitive validations easier to write, read,
 Install PyRule using pip:
 
 ```bash
-pip install py-rule
+pip install py-rule-lib
 ```
 
 Then import PyRule into your Python project:
