@@ -13,7 +13,6 @@ Install PyRule using pip:
 ```bash
 pip install py-rule-lib
 ```
-
 Then import PyRule into your Python project:
 
 ```python
